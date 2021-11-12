@@ -3,34 +3,40 @@ import random
 import getpass
 # import os
 
+# setting up sqlite3
 con = sqlite3.connect("testdb.db")
 cur = con.cursor()
 
-class User:
+# getters and setters are lame, i can just access these bad boys
+class User: 
     def __init__(self, usr="Guest", bool=False, id=0):
         self.name = usr
-        self.Admin = bool
+        self.admin = bool
         self.ID = id
-    
-    def setName(self, str):
-        self.name = str
-    
-    def setAdmin(self, bool):
-        self.Admin = bool
-    
-    def setID(self, num):
-        self.ID = num
 
-class Driver:
+class Driver: # dependent on class User
     def __init__(self):
         self.user = User()
         self.logged_in = 0
         self.help_code = 0
 
+    # the most edited function, it goes here so i can find it easier
+    # all the ways i can think of to make this easier to work with just mess up the formatting
+    def help(self):
+        if (self.help_code == 0): # 0 is not logged in
+            print("Options: \n\tLogin\n\tCreate Account\n\tExit\n\tHelp")
+        if ((self.help_code == 1) or self.help_code == 2): # 1 is logged in
+            print("Options: \n\tLogout \n\tExit \n\tSearch [-t, -a, -p, -d]")
+        if (self.help_code == 2): # 2 is admin
+            print("\tDelete Account")
+
     # possibly prone to sql injection
     # tried to do injection, it didn't work. there's a chance idk how to do it
     # returns -1 on failure, 0 on success
     def create_account(self):
+        if (self.logged_in == 1):
+            print(f"Unknown command: 'create account', try 'help'")
+            return
         usern = input("Input Username:  ")
         passw = getpass.getpass("Input Password:  ")
         # pass2 = input("VERIFY PASSWORD: ")
@@ -51,83 +57,194 @@ class Driver:
         con.commit()
         return
 
-    def help(self):
-        if (self.help_code == 0): # 0 is not logged in
-            print("Options: \n\tLogin\n\tCreate Account\n\tExit\n\tHelp")
-        if ((self.help_code == 1) or self.help_code == 2):
-            print("Options: \n\texit \n\tidk lmao")
-        if (self.help_code == 2):
-            print("Delete Account")
-
     def login(self):
+        i = 0
+        # if logged in, pretend this doesn't exist
         if (self.logged_in == 1):
+            print(f"Unknown command: 'login', try 'help'")
             return
-        # int = 0
-        usern = input("INPUT USERNAME: ")
-        passw = getpass.getpass("INPUT PASSWORD: ")
-        cur.execute("select exists(select * from Users where Username=? AND Password=?)", (usern, passw))
-        int = cur.fetchone()[0]
-        if not (int):
-            print("Wrong username or password")
-            self.logged_in = int
-            self.user = "Guest"
-            return
+        # get user credentials
+        # 3 attempts before kicking out
+        while(1):
+            usern = input("INPUT USERNAME: ")
+            passw = getpass.getpass("INPUT PASSWORD: ")
+            # make sure they're correct
+            cur.execute("select exists(select * from Users where Username=? AND Password=?)", (usern, passw))
+            int = cur.fetchone()[0]
+            i += 1
+            if ((not int) and (i < 3)):
+                print("Wrong username or password")
+            elif (i == 3):
+                print("3 incorrect login attempts")
+                return
+            else:
+                break
+        # update necessary info
         for row in cur.execute("select Admin, UserID from Users where Username=?", (usern, )):
             print("", end="") # do nothing command
-        # user = User(usern, row[0], row[1])
-        self.user.setName(usern)
-        self.user.setAdmin(row[0])
-        self.user.setID(row[1])
+        self.user.name = usern
+        self.user.admin = row[0]
+        self.user.ID = row[1]
         self.logged_in = int
-        self.help_code = 1
-        # self.user = user
+        if (self.user.admin):
+            self.help_code = 2
+        else:
+            self.help_code = 1
         return
 
-    def authorSearch():
-        author = input("INPUT AUTHOR NAME: ")
-        for row in cur.execute("SELECT Title from Book where Author LIKE ?", (f"%{author}%", )):
-            print(row[0])
+    def handleSearch(self, input):
+        inputList = input.split()
+        if ((inputList[1] == "-a") or (inputList[1] == "author")):
+            self.bookSearch("Author")
+        elif ((inputList[1] == "-t") or (inputList[1] == "title")):
+            self.bookSearch("Title")
+        elif ((inputList[1] == "-d") or (inputList[1] == "date")):
+            self.bookSearch("Date")
+        elif ((inputList[1] == "-d") or (inputList[1] == "publisher")):
+            self.bookSearch("Publisher")
+
+    def bookSearch(self, option):
+        # make sure the user is logged in at all, no guests allowed
+        if (self.logged_in == 0):
+            print(f"Unknown command: '{option.lower()}Search', try 'help'")
+            return
+        # get user input
+        query = input(f"INPUT {option.upper()}: ")
+        # make sure it exists
+        cur.execute(f"select exists(SELECT * from Book where {option} LIKE ?)", (f"%{query}%", ))
+        if not (cur.fetchone()[0]):
+            print(f"No {option.lower()} found by that name")
+            return
+        # finding and representing the data
+        lengthList = [13, 20, 20, 12, 20, 7, 10]
+        labelList = ["ISBN", "Title", "Author", "Date", "Publisher", "Pages", "Quantity"]
+        for i in range(len(lengthList)):
+            print(centerString(labelList[i], lengthList[i]), end="")
+            if (i != len(lengthList)-1):
+                print("|", end="")
+            else:
+                print("")
+        for row in cur.execute(f"SELECT * from Book where {option} LIKE ?", (f"%{query}%", )):
+            for i in range(len(row)):
+                print(centerString(str(row[i]), lengthList[i]), end="")
+                if (i != len(row)-1):
+                    print("|", end="")
+                else:
+                    print("")
+
+    def delete_account(self):
+        # if the user isn't an admin, pretend it doesn't exist
+        if not (self.user.admin):
+            print(f"Unknown command: 'delete account', try 'help'")
+            return
+        # make sure they are who they say they are
+        password = getpass.getpass(f"Password for {self.user.name}: ")
+        cur.execute("select exists(select * from Users where Username=? AND Password=?)", (self.user.name, password))
+        if not (cur.fetchone()[0]):
+            print("Incorrect Password")
+            return
+        # get user input
+        password = input("Enter username to delete: ") # reusing variables
+        if (self.user.name == password):
+            print("Cannot delete self")
+            return
+        # check to make sure the user exists
+        cur.execute("select exists(select * from Users where Username=?)", (password, ))
+        if not (cur.fetchone()[0]):
+            print(f"User '{password}' does not exist")
+            return
+        # make sure the user isn't an admin
+        cur.execute("select exists(select * from Users where Username=? AND Admin=?)", (password, 0))
+        if not (cur.fetchone()[0]):
+            print("Permission Denied")
+            return
+        # delete
+        cur.execute("delete from Users where Username=?", (password, ))
+        con.commit()
+
+    def logout(self):
+        # set everything to defaults
+        self.logged_in = 0
+        self.help_code = 0
+        self.user.name = "Guest"
+        self.user.admin = False
+        self.user.ID = 0
+        return
+
+# helper function, just centers a string and makes it a specified length
+def centerString(string, length=15):
+    output = ""
+    if (len(string) <= length):
+        long = length - (len(string))
+        front = int(long/2)
+        back = int((long/2) + (long % 2))
+        output = (" " * front) + string + (" " * back)
+    else:
+        output = string[:length-3] + "..."
+    return output
+
+# exit handler
+def atexit():
+    con.close()
+    exit()
+
+# menu for when logged out
+def logged_out():
+    while not(driver.logged_in):
+        # obtaining user input
+        option = input("Guest % ").lower()
+
+        # processing user input
+        if (option == "login"):
+            driver.login()
+
+        elif (option == "create account"):
+            driver.create_account()
+
+        elif (option == "exit"):
+            if (input("Exit? (Y/n): ").lower() == "y"):
+                atexit()
+
+        elif (option == "help"):
+            driver.help()
+
+        else:
+            print(f"Unknown command: '{option}', try 'help'")
+
+    # triggers when the while loop ends
+    return logged_in()
+
+# menu for when logged in
+def logged_in():
+    while(1):
+        # getting user input
+        option = input(f"{driver.user.name} % ").lower()
+
+        # processing user input
+        if (option == "help"):
+            driver.help()
+
+        elif (option == "exit"):
+            if (input("Exit? (Y/n): ").lower() == "y"):
+                atexit()
+
+        elif (option == "delete account"):
+            driver.delete_account()
+
+        elif (option.split()[0] == "search"):
+            driver.handleSearch(option)
+
+        elif (option == "logout"):
+            return driver.logout()
+
+        else:
+            print(f"Unknown command: '{option}', try 'help'")
+
 
 # equivalent to a C main()
-# starting the not definition code here
-
-# adminFlag = 0
-# logged_in = 0
-# kill = 0
-# user = 0
-# list = [0, 0]
+# starting the not class/function definition code here
 driver = Driver()
-user_data = User()
 
-while not(driver.logged_in):
-    option = input("Guest % ").lower()
-    if (option == "login"):
-        driver.login()
-    elif (option == "create account"):
-        driver.create_account()
-    elif (option == "exit"):
-        if (input("Exit? (Y/n): ").lower() == "y"):
-            exit()
-    elif (option == "help"):
-        driver.help()
-    # try:
-    #     func = getattr(Driver, "do_" + option)
-    # except:
-    #     print(f"Unknown command: '{option}', try 'help'")
-    # else:
-    #     list[0], list[1] = func()
-    # if (list[0] != None):
-    #     logged_in, user = list[0], list[1]
-
+# at most, you'll be 3 functions deep at any given moment
 while(1):
-    option = input(f"{driver.user.name} % ").lower()
-    if (option == "help"):
-        driver.help()
-    elif (option == "exit"):
-        if (input("Exit? (Y/n): ").lower() == "y"):
-            exit()
-    else:
-        print(f"Unknown command: '{option}', try 'help'")
-
-con.close()
-# print("done")
+    logged_out()
