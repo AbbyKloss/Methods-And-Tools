@@ -94,14 +94,20 @@ class Driver: # dependent on class User
 
     def handleSearch(self, input):
         inputList = input.split()
-        if ((inputList[1] == "-a") or (inputList[1] == "author")):
-            self.bookSearch("Author")
-        elif ((inputList[1] == "-t") or (inputList[1] == "title")):
+        try:
+            if ((inputList[1] == "-a") or (inputList[1] == "author")):
+                self.bookSearch("Author")
+            elif ((inputList[1] == "-d") or (inputList[1] == "date")):
+                self.bookSearch("Date")
+            elif ((inputList[1] == "-p") or (inputList[1] == "publisher")):
+                self.bookSearch("Publisher")
+            # elif ((inputList[1] == "-t") or (inputList[1] == "title")): # this is the default, so this isn't necessary?
+            #     self.bookSearch("Title")
+            else:
+                self.bookSearch("Title")
+        # if no search flags are input
+        except IndexError:
             self.bookSearch("Title")
-        elif ((inputList[1] == "-d") or (inputList[1] == "date")):
-            self.bookSearch("Date")
-        elif ((inputList[1] == "-d") or (inputList[1] == "publisher")):
-            self.bookSearch("Publisher")
 
     def bookSearch(self, option):
         # make sure the user is logged in at all, no guests allowed
