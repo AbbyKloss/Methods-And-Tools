@@ -4,8 +4,8 @@ import getpass
 # import os
 
 # setting up sqlite3
-con = sqlite3.connect("testdb.db")
-cur = con.cursor()
+connected_database = sqlite3.connect("testdb.db")
+cursor = connected_database.cursor()
 
 
 # helper function, just centers a string and makes it a specified length
@@ -28,19 +28,19 @@ class User:
         self.ID = id
     
     def updatePayment(self, ccn: int) -> None:
-        cur.execute(f"update Users set Payment=? where UserID=?", (ccn, self.ID))
+        cursor.execute(f"update Users set Payment=? where UserID=?", (ccn, self.ID))
 
     def updateAddress(self, addr: str) -> None:
-        cur.execute(f"update Users set Address=? where UserID=?", (addr, self.ID))
+        cursor.execute(f"update Users set Address=? where UserID=?", (addr, self.ID))
 
     def getPayment(self) -> int:
-        cur.execute(f"select Payment from Users where UserID={self.ID}")
-        ccn = cur.fetchone()[0]
-        return ccn
+        cursor.execute(f"select Payment from Users where UserID={self.ID}")
+        credit_card_number = cursor.fetchone()[0]
+        return credit_card_number
 
     def getAddress(self) -> str:
-        cur.execute(f"select Address from Users where UserID={self.ID}")
-        addr = cur.fetchone()[0]
+        cursor.execute(f"select Address from Users where UserID={self.ID}")
+        addr = cursor.fetchone()[0]
         return addr
 
 
@@ -49,38 +49,38 @@ class Cart:
         self.user = user
 
     def checkExists(self, itemID: int) -> bool:
-        cur.execute("select exists(select * from Cart where UserID=? and ItemID=?)", (self.user.ID, itemID))
-        return cur.fetchone()[0]
+        cursor.execute("select exists(select * from Cart where UserID=? and ItemID=?)", (self.user.ID, itemID))
+        return cursor.fetchone()[0]
 
     def removeItem(self, itemID: int) -> None:
         if self.checkExists(itemID):
-            cur.execute("delete from Cart where UserID=? and ItemID=?", (self.user.ID, itemID))
+            cursor.execute("delete from Cart where UserID=? and ItemID=?", (self.user.ID, itemID))
         else:
             print("Item does not exist")
-        con.commit()
+        connected_database.commit()
     
     def changeQuantity(self, itemID: int, quantity: int) -> None:
         if self.checkExists(itemID):
-            cur.execute("update Cart set Quantity=? where UserID=? and itemID=?", (quantity, self.user.ID, itemID))
+            cursor.execute("update Cart set Quantity=? where UserID=? and itemID=?", (quantity, self.user.ID, itemID))
         else:
             print("Item does not exist")
-        con.commit()
+        connected_database.commit()
 
     def addItem(self, itemID: int, quantity: int) -> None:
         # try:
         if not self.checkExists(itemID):
-            cur.execute("insert into Cart values (?, ?, ?)", (self.user.ID, itemID, quantity))
+            cursor.execute("insert into Cart values (?, ?, ?)", (self.user.ID, itemID, quantity))
         else:
-            cur.execute("select Quantity from Cart where UserID=? and ItemID=?", (self.user.ID, itemID))
-            quantity += cur.fetchone()[0]
+            cursor.execute("select Quantity from Cart where UserID=? and ItemID=?", (self.user.ID, itemID))
+            quantity += cursor.fetchone()[0]
             self.changeQuantity(itemID, quantity)
         # except:
         #     cur.execute("insert into Cart values (?, ?, ?)", (self.user.ID, itemID, quantity))
-        con.commit()
+        connected_database.commit()
     
     def clearCart(self) -> None:
-        cur.execute(f"delete from Cart where UserID={self.user.ID}")
-        con.commit()
+        cursor.execute(f"delete from Cart where UserID={self.user.ID}")
+        connected_database.commit()
 
     def viewCart(self) -> None:
         lenList = [30, 10]
@@ -90,10 +90,10 @@ class Cart:
                 print(centerString(nameList[i], lenList[i]), end="|")
             else:
                 print(centerString(nameList[i], lenList[i]))
-        cur.execute(f"select ItemID, Quantity from Cart where UserID=?", (self.user.ID, ))
-        fetch = cur.fetchall()
+        cursor.execute(f"select ItemID, Quantity from Cart where UserID=?", (self.user.ID, ))
+        fetch = cursor.fetchall()
         for row in fetch:
-            for item in cur.execute(f"select Title from Book where ISBN={row[0]}"):
+            for item in cursor.execute(f"select Title from Book where ISBN={row[0]}"):
                 title = item[0]
             itemList = [title, str(row[1])]
             for i in range(len(row)):
@@ -149,18 +149,18 @@ class Driver: # dependent on classes User and Cart
         if (passw != getpass.getpass("Verify Password: ")):
             print("Passwords don't match")
             return
-        cur.execute("select exists(select * from Users where Username=?)", (usern, ))
-        if (int(cur.fetchone()[0])):
+        cursor.execute("select exists(select * from Users where Username=?)", (usern, ))
+        if (int(cursor.fetchone()[0])):
             print("Username already taken")
             return
         kill = 1
         # finds a random UserID
         while (kill):
             rand = random.randint(0, 99999)
-            cur.execute("select exists(select * from Users where UserID=?)", (rand, ))
-            kill = cur.fetchone()[0] # returns a 1 if userID is taken, 0 otherwise
-        cur.execute("insert into Users values(?, ?, ?, NULL, NULL, 0)", (rand, usern, passw))
-        con.commit()
+            cursor.execute("select exists(select * from Users where UserID=?)", (rand, ))
+            kill = cursor.fetchone()[0] # returns a 1 if userID is taken, 0 otherwise
+        cursor.execute("insert into Users values(?, ?, ?, NULL, NULL, 0)", (rand, usern, passw))
+        connected_database.commit()
         return
 
     def login(self):
@@ -175,8 +175,8 @@ class Driver: # dependent on classes User and Cart
             usern = input("INPUT USERNAME: ")
             passw = getpass.getpass("INPUT PASSWORD: ")
             # make sure they're correct
-            cur.execute("select exists(select * from Users where Username=? AND Password=?)", (usern, passw))
-            int = cur.fetchone()[0]
+            cursor.execute("select exists(select * from Users where Username=? AND Password=?)", (usern, passw))
+            int = cursor.fetchone()[0]
             i += 1
             if ((not int) and (i < 3)):
                 print("Wrong username or password")
@@ -186,7 +186,7 @@ class Driver: # dependent on classes User and Cart
             else:
                 break
         # update necessary info
-        for row in cur.execute("select Admin, UserID from Users where Username=?", (usern, )):
+        for row in cursor.execute("select Admin, UserID from Users where Username=?", (usern, )):
             print("", end="") # do nothing command
         self.user.name = usern
         self.user.admin = row[0]
@@ -223,8 +223,8 @@ class Driver: # dependent on classes User and Cart
         # get user input
         query = input(f"INPUT {option.upper()}: ")
         # make sure it exists
-        cur.execute(f"select exists(SELECT * from Book where {option} LIKE ?)", (f"%{query}%", ))
-        if not (cur.fetchone()[0]):
+        cursor.execute(f"select exists(SELECT * from Book where {option} LIKE ?)", (f"%{query}%", ))
+        if not (cursor.fetchone()[0]):
             print(f"No {option.lower()} found by that name")
             return
         # finding and representing the data
@@ -236,7 +236,7 @@ class Driver: # dependent on classes User and Cart
                 print("|", end="")
             else:
                 print("")
-        for row in cur.execute(f"SELECT * from Book where {option} LIKE ?", (f"%{query}%", )):
+        for row in cursor.execute(f"SELECT * from Book where {option} LIKE ?", (f"%{query}%", )):
             for i in range(len(row)):
                 print(centerString(str(row[i]), lengthList[i]), end="")
                 if (i != len(row)-1):
@@ -251,8 +251,8 @@ class Driver: # dependent on classes User and Cart
             return
         # make sure they are who they say they are
         password = getpass.getpass(f"Password for {self.user.name}: ")
-        cur.execute("select exists(select * from Users where Username=? AND Password=?)", (self.user.name, password))
-        if not (cur.fetchone()[0]):
+        cursor.execute("select exists(select * from Users where Username=? AND Password=?)", (self.user.name, password))
+        if not (cursor.fetchone()[0]):
             print("Incorrect Password")
             return
         # get user input
@@ -261,18 +261,18 @@ class Driver: # dependent on classes User and Cart
             print("Cannot delete self")
             return
         # check to make sure the user exists
-        cur.execute("select exists(select * from Users where Username=?)", (password, ))
-        if not (cur.fetchone()[0]):
+        cursor.execute("select exists(select * from Users where Username=?)", (password, ))
+        if not (cursor.fetchone()[0]):
             print(f"User '{password}' does not exist")
             return
         # make sure the user isn't an admin
-        cur.execute("select exists(select * from Users where Username=? AND Admin=?)", (password, 0))
-        if not (cur.fetchone()[0]):
+        cursor.execute("select exists(select * from Users where Username=? AND Admin=?)", (password, 0))
+        if not (cursor.fetchone()[0]):
             print("Permission Denied")
             return
         # delete
-        cur.execute("delete from Users where Username=?", (password, ))
-        con.commit()
+        cursor.execute("delete from Users where Username=?", (password, ))
+        connected_database.commit()
 
     def logout(self):
         # set everything to defaults
@@ -297,18 +297,18 @@ class Driver: # dependent on classes User and Cart
         print("Address: ", self.user.getAddress())
 
     def checkout(self):
-        cur.execute("select max(OrderID) from Orders")
-        orderID = cur.fetchone()[0]+1
+        cursor.execute("select max(OrderID) from Orders")
+        orderID = cursor.fetchone()[0]+1
         cartList = []
-        cur.execute("select ItemID, Quantity from Cart where UserID=?", (self.user.ID, ))
-        fetch = cur.fetchall()
+        cursor.execute("select ItemID, Quantity from Cart where UserID=?", (self.user.ID, ))
+        fetch = cursor.fetchall()
         sum = 0
         for row in fetch:
             quantity = row[1]
             isbn = row[0]
             # cur.execute("insert into Orders values(?, ?, ?, ?)", (orderID, row[0], row[1], self.user.ID))
-            cur.execute("select Quantity, Title, Cost from Book where ISBN=?", (isbn,))
-            fet = cur.fetchall()
+            cursor.execute("select Quantity, Title, Cost from Book where ISBN=?", (isbn,))
+            fet = cursor.fetchall()
             for item in fet:
                 instock = item[0]
                 if (instock < quantity):
@@ -325,8 +325,8 @@ class Driver: # dependent on classes User and Cart
         print(f"Total cost is: {sum}")
         response = input("Is this ok? (y/n): ").lower()
         if response.startswith("y"):
-            cur.execute("select Payment, Address from Users where UserID=?", (self.user.ID, ))
-            payment, address = cur.fetchone()
+            cursor.execute("select Payment, Address from Users where UserID=?", (self.user.ID, ))
+            payment, address = cursor.fetchone()
             if (payment == None) or (address == None):
                 print("Payment and/or Address needs to be updated")
                 response = input("Update now? (Y/n): ").lower()
@@ -339,18 +339,15 @@ class Driver: # dependent on classes User and Cart
                 else:
                     return
             for item in cartList:
-                cur.execute("insert into Orders values(?, ?, ?, ?)", (item[0], item[1], item[2], item[3]))
-                cur.execute(f"update Book set Quantity={item[4]-item[2]} where ISBN={item[1]}")
+                cursor.execute("insert into Orders values(?, ?, ?, ?)", (item[0], item[1], item[2], item[3]))
+                cursor.execute(f"update Book set Quantity={item[4]-item[2]} where ISBN={item[1]}")
             self.cart.clearCart()
-            con.commit()
+            connected_database.commit()
                 
-        
-
-
 
 # exit handler
 def atexit():
-    con.close()
+    connected_database.close()
     exit()
 
 # menu for when logged out
@@ -358,10 +355,6 @@ def logged_out():
     while not(driver.logged_in):
         # obtaining user input
         option = input("Guest % ").lower()
-        # try:
-        #     flags = option.split()[1:]
-        # except:
-        #     flags = ""
 
         # processing user input
         if (option == "login"):
@@ -380,12 +373,6 @@ def logged_out():
 
         else:
             print(f"Unknown command: '{option}', try 'help'")
-        # try:
-        #     controller = getattr(Driver, option)
-        # except AttributeError:
-        #     print(f"Unknown command: '{option}', try 'help'")
-        # else:
-        #     controller(driver, flags)
 
     # triggers when the while loop ends
     return logged_in()
@@ -395,10 +382,6 @@ def logged_in():
     while(1):
         # getting user input
         option = input(f"{driver.user.name} % ").lower()
-        # try:
-        #     flags = option.split()[1:]
-        # except:
-        #     flags = ""
 
         # processing user input
         if (option == ""):
@@ -460,13 +443,6 @@ def logged_in():
 
         else:
             print(f"Unknown command: '{option}', try 'help'")
-        # try:
-        #     controller = getattr(Driver, option)
-        # except AttributeError:
-        #     print(f"Unknown command: '{option}', try 'help'")
-        # else:
-        #     controller(driver, flags)
-
 
 # equivalent to a C main()
 # starting the not class/function definition code here
