@@ -52,8 +52,8 @@ cur.execute(''' create table if not exists Users (
 				)''')
 
 # uncomment any of these execute functions that you want, i just throw more in here when i need to add to the database and can't do that via the actual program
-cur.execute(f"insert into Users values (00002, 'admin2', 'admin2', 'NULL', 'NULL', 1)")
-cur.execute(f"insert into Users values (00001, 'admin', 'admin', 'NULL', 'NULL', 1)")
+cur.execute(f"insert into Users values (00002, 'admin2', 'admin2', {None}, {None}, 1)")
+cur.execute(f"insert into Users values (00001, 'admin', 'admin', {None}, {None}, 1)")
 cur.execute(f"insert into Users values ({random.randint(0, 99999)}, '{'georgef88'}', 'password', '{random.randint(1000000000000000, 9999999999999999)}', '75 B. S. Hood Rd, Mississippi State, MS 39762', 0)")
 
 # con.commit()
@@ -82,7 +82,7 @@ print(f"Books found: {books}")
 booknum = 1
 
 # print(len(str(booknum-1)))
-sys.stdout.flush()
+# sys.stdout.flush()
 
 for item in soup.find_all("ol"):
     for li in item.find_all("li"):
@@ -95,7 +95,7 @@ for item in soup.find_all("ol"):
         for h3 in li.find_all("h3"):
             for a in h3.find_all("a"):
                 isbn, publisher, date, pages = getTable(a["href"])
-        cur.execute(f"insert into Book values (?, ?, ?, ?, ?, ?, {random.randint(1, 100)}, ?)", (isbn, author, title, date, publisher, pages, price))
+        cur.execute(f"insert into Book values (?, ?, ?, ?, ?, ?, {random.randint(1, 100)}, ?)", (isbn, title, author, date, publisher, pages, price))
         booknum += 1
 print(" ")
 # Cart is just a list of entries for a single user
@@ -112,8 +112,8 @@ cur.execute(''' create table if not exists Orders (
             Quantity integer,
             UserID integer
             )''')
-
-cur.execute(f"insert into Orders values (0, 0, 0, 0)")
+ran = random.randint(1000000000000, 9999999999999)
+cur.execute(f"insert into Orders values (0, {ran}, 0, 0)")
 
 print("Done")
 con.commit()
