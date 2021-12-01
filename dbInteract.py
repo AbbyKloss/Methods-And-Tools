@@ -9,7 +9,8 @@ cursor = connected_database.cursor()
 
 
 # helper function, just centers a string and makes it a specified length
-def centerString(string: str, length=15) -> str:
+def centerString(string: str, length: int=15) -> str:
+    '''Centers a string within a space defined in length'''
     output = ""
     if (len(string) <= length):
         long = length - (len(string))
@@ -22,23 +23,27 @@ def centerString(string: str, length=15) -> str:
 
 # getters and setters are lame, i can just access these bad boys
 class User: 
-    def __init__(self, usr="Guest", bool=False, id=0):
+    def __init__(self, usr="Guest", bool=False, id: int=0):
         self.name = usr
         self.admin = bool
         self.ID = id
     
     def updatePayment(self, ccn: int) -> None:
+        '''Sets user's credit card number in database'''
         cursor.execute(f"update Users set Payment=? where UserID=?", (ccn, self.ID))
 
     def updateAddress(self, addr: str) -> None:
+        '''Sets user's address in database'''
         cursor.execute(f"update Users set Address=? where UserID=?", (addr, self.ID))
 
     def getPayment(self) -> int:
+        '''Retrieves user's credit card number from database'''
         cursor.execute(f"select Payment from Users where UserID={self.ID}")
         credit_card_number = cursor.fetchone()[0]
         return credit_card_number
 
     def getAddress(self) -> str:
+        '''Retrieves user's address from database'''
         cursor.execute(f"select Address from Users where UserID={self.ID}")
         addr = cursor.fetchone()[0]
         return addr
@@ -132,6 +137,7 @@ class Driver: # dependent on classes User and Cart
 
     # the most edited function, it goes here so i can find it easier
     def help(self):
+        '''Tells the user what they can do at any given time'''
         if (self.help_code == 0): # 0 is not logged in
             print("Options: \
                 \n\tLogin\
@@ -153,6 +159,7 @@ class Driver: # dependent on classes User and Cart
                 \n\tOrder History\
                 \n\tUpdate Payment\
                 \n\tUpdate Address\
+                \n\tCheck Info\
                 ")
         if (self.help_code == 2): # 2 is admin
             print("\tDelete Account")
@@ -160,7 +167,8 @@ class Driver: # dependent on classes User and Cart
     # possibly prone to sql injection
     # tried to do injection, it didn't work. there's a chance idk how to do it
     # returns -1 on failure, 0 on success
-    def create_account(self):
+    def create_account(self) -> None:
+        '''Creates an account from the login screen'''
         if (self.logged_in == 1):
             print(f"Unknown command: 'create account', try 'help'")
             return
@@ -184,7 +192,8 @@ class Driver: # dependent on classes User and Cart
         connected_database.commit()
         return
 
-    def login(self):
+    def login(self) -> None:
+        '''Guides the user through the logging in process'''
         i = 0
         # if logged in, pretend this doesn't exist
         if (self.logged_in == 1):
@@ -221,7 +230,8 @@ class Driver: # dependent on classes User and Cart
             self.help_code = 1
         return
 
-    def handleSearch(self, input):
+    def handleSearch(self, input: str) -> None:
+        '''helper function for searching'''
         inputList = input.split()
         try:
             if ((inputList[1] == "-a") or (inputList[1] == "author")):
@@ -236,7 +246,7 @@ class Driver: # dependent on classes User and Cart
         except IndexError:
             self.bookSearch("Title")
 
-    def bookSearch(self, option):
+    def bookSearch(self, option: str) -> None:
         # make sure the user is logged in at all, no guests allowed
         if (self.logged_in == 0):
             print(f"Unknown command: '{option.lower()}Search', try 'help'")
@@ -265,7 +275,8 @@ class Driver: # dependent on classes User and Cart
                 else:
                     print("")
 
-    def delete_account(self):
+    def delete_account(self) -> None:
+        '''Guides admins through deleting accounts'''
         # if the user isn't an admin, pretend it doesn't exist
         if not (self.user.admin):
             print(f"Unknown command: 'delete account', try 'help'")
@@ -295,7 +306,10 @@ class Driver: # dependent on classes User and Cart
         cursor.execute("delete from Users where Username=?", (password, ))
         connected_database.commit()
 
-    def logout(self):
+    def logout(self) -> None:
+        if (self.logged_in == 0):
+            print(f"Unknown command: 'logout', try 'help'")
+            return
         # set everything to defaults
         self.logged_in = 0
         self.help_code = 0
@@ -305,19 +319,31 @@ class Driver: # dependent on classes User and Cart
         # self.cart.userID = 0
         return
 
-    def updatePayment(self):
+    def updatePayment(self) -> None:
+        if (self.logged_in == 0):
+            print(f"Unknown command: 'update payment', try 'help'")
+            return
         ccn = int(input("Enter Credit Card Number: "))
         self.user.updatePayment(ccn)
     
-    def updateAddress(self):
+    def updateAddress(self) -> None:
+        if (self.logged_in == 0):
+            print(f"Unknown command: 'update address', try 'help'")
+            return
         addr = input("Enter Address: ")
         self.user.updateAddress(addr)
 
-    def checkInfo(self):
+    def checkInfo(self) -> None:
+        if (self.logged_in == 0):
+            print(f"Unknown command: 'Check Info', try 'help'")
+            return
         print("Payment: ", self.user.getPayment())
         print("Address: ", self.user.getAddress())
 
-    def checkout(self):
+    def checkout(self) -> None:
+        if (self.logged_in == 0):
+            print(f"Unknown command: 'Checkout', try 'help'")
+            return
         cursor.execute("select max(OrderID) from Orders")
         orderID = cursor.fetchone()[0]+1
         cartList = []
@@ -367,12 +393,14 @@ class Driver: # dependent on classes User and Cart
                 
 
 # exit handler
-def atexit():
+def atexit() -> None:
+    '''Exit Handler'''
     connected_database.close()
     exit()
 
 # menu for when logged out
-def logged_out():
+def logged_out() -> None:
+    '''Handles the act of being logged out from the site'''
     while not(driver.logged_in):
         # obtaining user input
         option = input("Guest % ").lower()
@@ -399,7 +427,8 @@ def logged_out():
     return logged_in()
 
 # menu for when logged in
-def logged_in():
+def logged_in() -> None:
+    '''Handles the act of being logged in to the site'''
     while(1):
         # getting user input
         option = input(f"{driver.user.name} % ").lower()
