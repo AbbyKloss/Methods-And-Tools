@@ -14,9 +14,39 @@ class User:
         self.admin = bool
         self.ID = id
 
-class Driver: # dependent on class User
+class Cart:
+    def __init__(self, user: User):
+        self.user = user
+
+    def checkExists(self, itemID: int) -> bool:
+        cur.execute("select * from Cart where UserID=?, ItemID=", (self.user.id, itemID))
+        return cur.fetchone()[0]
+
+    def removefromCart(self, itemID: int) -> None:
+        if self.checkExists(itemID):
+            cur.execute("delete from Cart where UserID=?, ItemID=?", (self.user.ID, itemID))
+        else:
+            print("Item does not exist")
+    
+    def changeQuantity(self, itemID: int, quantity: int) -> None:
+        if self.checkExists(itemID):
+            cur.execute("update Cart set Quantity=? where UserID=?, itemID=?", (quantity, self.user.ID, itemID))
+        else:
+            print("Item does not exist")
+
+    def addItem(self, itemID: int, quantity: int) -> None:
+        if self.checkExists(itemID):
+            cur.execute("insert into Cart values (?, ?, ?)", (self.user.ID, itemID, quantity))
+        else:
+            print("Item does not exist")
+    
+    def clearCart(self) -> None:
+        cur.execute(f"delete from Cart where UserID={self.user.id}")
+
+class Driver: # dependent on classes User and Cart
     def __init__(self):
         self.user = User()
+        self.cart = Cart(self.user)
         self.logged_in = 0
         self.help_code = 0
 
@@ -85,7 +115,9 @@ class Driver: # dependent on class User
         self.user.name = usern
         self.user.admin = row[0]
         self.user.ID = row[1]
+        # self.cart.user.ID = self.user.ID # don't think this is necessary
         self.logged_in = int
+        
         if (self.user.admin):
             self.help_code = 2
         else:
@@ -175,7 +207,16 @@ class Driver: # dependent on class User
         self.user.name = "Guest"
         self.user.admin = False
         self.user.ID = 0
+        # self.cart.userID = 0
         return
+
+    def checkout(self):
+        orderID = cur.execute("select max(OrderID) from Orders")[0]+1
+        for row in cur.execute("select ItemID, Quantity from Cart where UserID=?", (self.user.id, )):
+            cur.execute("insert into Orders values(?, ?, ?, ?)", (orderID, row[0], row[1], self.user.id))
+        cur.execute("delete from Cart where UserID=?", (self.user.id, ))
+        
+
 
 # helper function, just centers a string and makes it a specified length
 def centerString(string, length=15):
@@ -199,12 +240,17 @@ def logged_out():
     while not(driver.logged_in):
         # obtaining user input
         option = input("Guest % ").lower()
+        # try:
+        #     flags = option.split()[1:]
+        # except:
+        #     flags = ""
 
         # processing user input
         if (option == "login"):
             driver.login()
 
         elif (option == "create account"):
+    
             driver.create_account()
 
         elif (option == "exit"):
@@ -216,6 +262,12 @@ def logged_out():
 
         else:
             print(f"Unknown command: '{option}', try 'help'")
+        # try:
+        #     controller = getattr(Driver, option)
+        # except AttributeError:
+        #     print(f"Unknown command: '{option}', try 'help'")
+        # else:
+        #     controller(driver, flags)
 
     # triggers when the while loop ends
     return logged_in()
@@ -225,6 +277,10 @@ def logged_in():
     while(1):
         # getting user input
         option = input(f"{driver.user.name} % ").lower()
+        # try:
+        #     flags = option.split()[1:]
+        # except:
+        #     flags = ""
 
         # processing user input
         if (option == "help"):
@@ -243,8 +299,35 @@ def logged_in():
         elif (option == "logout"):
             return driver.logout()
 
+        elif option.startswith("add"):
+            isbn = int(input("Enter the item's ISBN: "))
+            quantity = int(input("Enter the number of items: "))
+            return driver.cart.addItem(isbn, quantity)
+        
+        elif option.startswith("remove"):
+            isbn = int(input("Enter the item's ISBN: "))
+            return driver.cart.removeItem(isbn)
+
+        elif option.startswith("change"):
+            isbn = int(input("Enter the item's ISBN: "))
+            quantity = int(input("Enter the total number of this item desired: "))
+            return driver.cart.changeQuantity(isbn, quantity)
+
+        elif option.startswith("clear"):
+            verify = input("Clear the cart? (y/n)").lower()
+            if (verify.startswith("y")):
+                driver.cart.clearCart()
+            else:
+                print("Action cancelled")
+
         else:
             print(f"Unknown command: '{option}', try 'help'")
+        # try:
+        #     controller = getattr(Driver, option)
+        # except AttributeError:
+        #     print(f"Unknown command: '{option}', try 'help'")
+        # else:
+        #     controller(driver, flags)
 
 
 # equivalent to a C main()
