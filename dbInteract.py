@@ -102,6 +102,26 @@ class Cart:
                 else:
                     print(centerString(itemList[i], lenList[i]))
 
+    def viewOrders(self) -> None:
+        lenList = [30, 10]
+        nameList = ["Title", "Quantity"]
+        for i in range(len(nameList)):
+            if (i != len(nameList)-1):
+                print(centerString(nameList[i], lenList[i]), end="|")
+            else:
+                print(centerString(nameList[i], lenList[i]))
+        cursor.execute(f"select ItemID, Quantity from Orders where UserID=?", (self.user.ID, ))
+        fetch = cursor.fetchall()
+        for row in fetch:
+            for item in cursor.execute(f"select Title from Book where ISBN={row[0]}"):
+                title = item[0]
+            itemList = [title, str(row[1])]
+            for i in range(len(row)):
+                if (i != len(row)-1):
+                    print(centerString(itemList[i], lenList[i]), end="|")
+                else:
+                    print(centerString(itemList[i], lenList[i]))
+
 
 class Driver: # dependent on classes User and Cart
     def __init__(self):
@@ -130,6 +150,7 @@ class Driver: # dependent on classes User and Cart
                 \n\tClear Cart\
                 \n\tView Cart\
                 \n\tCheckout\
+                \n\tOrder History\
                 \n\tUpdate Payment\
                 \n\tUpdate Address\
                 ")
@@ -425,6 +446,9 @@ def logged_in():
                 print("Action cancelled")
 
         elif option.startswith("view"):
+            driver.cart.viewCart()
+
+        elif option.startswith("order"):
             driver.cart.viewCart()
 
         elif option.startswith("checkout"):
