@@ -54,7 +54,7 @@ cur.execute(''' create table if not exists Users (
 # uncomment any of these execute functions that you want, i just throw more in here when i need to add to the database and can't do that via the actual program
 cur.execute(f"insert into Users values (00002, 'admin2', 'admin2', ?, ?, 1)", (None, None))
 cur.execute(f"insert into Users values (00001, 'admin', 'admin', ?, ?, 1)", (None, None))
-cur.execute(f"insert into Users values ({random.randint(0, 99999)}, '{'georgef88'}', 'password', '{random.randint(1000000000000000, 9999999999999999)}', '75 B. S. Hood Rd, Mississippi State, MS 39762', 0)")
+cur.execute(f"insert into Users values ({random.randint(0, 99999)}, '{'frankb75'}', 'password', '{random.randint(1000000000000000, 9999999999999999)}', '75 B. S. Hood Rd, Mississippi State, MS 39762', 0)")
 
 # con.commit()
 
