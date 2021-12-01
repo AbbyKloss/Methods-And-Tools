@@ -449,7 +449,7 @@ def logged_in():
             driver.cart.viewCart()
 
         elif option.startswith("order"):
-            driver.cart.viewCart()
+            driver.cart.viewOrders()
 
         elif option.startswith("checkout"):
             driver.checkout()
